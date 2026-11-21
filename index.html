@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interaktywna Prezentacja 3D - Historia</title>
+    <title>Społeczeństwo polskie pod okupacją — Prezentacja 3D</title>
     <script src="https://unpkg.com/globe.gl"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -28,8 +28,8 @@
             background-position: center;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 1s ease, transform 6s ease-out;
-            transform: scale(1.12);
+            transition: opacity 0.8s ease, transform 6s ease-out;
+            transform: scale(1.08);
             z-index: 5;
         }
         #scene-backdrop.active {
@@ -41,16 +41,48 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(to top, rgba(2, 6, 23, 0.95) 18%, rgba(2, 6, 23, 0.25) 60%, rgba(2, 6, 23, 0.55) 100%);
+            background: linear-gradient(
+                to top,
+                rgba(2, 6, 23, 0.96) 22%,
+                rgba(2, 6, 23, 0.35) 62%,
+                rgba(2, 6, 23, 0.65) 100%
+            );
+        }
+        .photo-caption-bar {
+            position: fixed;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 12;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(251, 191, 36, 0.4);
+            padding: 8px 14px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            color: #fde68a;
+            max-width: 90%;
+            backdrop-filter: blur(8px);
+        }
+        .photo-caption-bar.visible {
+            display: flex;
+        }
+        .photo-caption-bar button {
+            flex: 0 0 auto;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            border-radius: 7px;
         }
         .ui-overlay {
             position: absolute;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            width: 90%;
-            max-width: 540px;
-            background: rgba(15, 23, 42, 0.88);
+            width: 92%;
+            max-width: 620px;
+            background: rgba(15, 23, 42, 0.9);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(251, 191, 36, 0.35);
             border-radius: 16px;
@@ -59,15 +91,34 @@
             z-index: 10;
             transition: all 0.4s ease;
         }
-        .era-tag {
-            display: inline-block;
+        .top-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .live-badge {
+            font-size: 0.75rem;
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.15);
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+        .section-tag {
             font-size: 0.75rem;
             font-weight: bold;
             color: #fbbf24;
-            background: rgba(251, 191, 36, 0.14);
+            background: rgba(251, 191, 36, 0.15);
             padding: 3px 8px;
             border-radius: 6px;
-            margin-left: 6px;
+        }
+        .step-counter {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            background: rgba(148, 163, 184, 0.14);
+            padding: 3px 8px;
+            border-radius: 6px;
+            margin-left: auto;
         }
         h2 {
             margin: 0 0 8px 0;
@@ -78,47 +129,39 @@
             margin: 0 0 10px 0;
             font-size: 0.95rem;
             line-height: 1.5;
-            color: #cbd5e1;
+            color: #e2e8f0;
         }
         .controls {
             display: none;
             gap: 10px;
-            margin-top: 15px;
+            margin-top: 14px;
         }
         button {
             flex: 1;
             background: #fbbf24;
             color: #020617;
             border: none;
-            padding: 12px;
+            padding: 11px 14px;
             border-radius: 10px;
             font-weight: bold;
-            font-size: 1rem;
+            font-size: 0.98rem;
             cursor: pointer;
         }
-        button:active { opacity: 0.8; }
-        .live-badge {
-            display: inline-block;
-            font-size: 0.75rem;
-            color: #38bdf8;
-            background: rgba(56, 189, 248, 0.15);
-            padding: 3px 8px;
-            border-radius: 6px;
-            margin-bottom: 8px;
-        }
-        .history-pin {
+        button:hover { filter: brightness(1.05); }
+        button:active { opacity: 0.82; }
+        .poland-pin {
             background: rgba(15, 23, 42, 0.92);
             border: 2px solid #fbbf24;
-            padding: 6px 12px;
+            padding: 5px 11px;
             border-radius: 20px;
             color: #fef3c7;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 13px;
             display: flex;
             align-items: center;
             gap: 6px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.55);
+            animation: popIn 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         @keyframes popIn {
             from { transform: scale(0); opacity: 0; }
@@ -131,17 +174,24 @@
     <div id="globeViz"></div>
     <div id="scene-backdrop"></div>
 
+    <div class="photo-caption-bar" id="photo-bar">
+        <button id="prev-photo-btn" onclick="cyclePhoto(-1)">◀</button>
+        <span id="photo-caption-text">Zdjęcie historyczne</span>
+        <button id="next-photo-btn" onclick="cyclePhoto(1)">▶</button>
+    </div>
+
     <div class="ui-overlay">
-        <div>
+        <div class="top-tags">
             <span class="live-badge" id="status-badge">🟢 Łączenie z bazą...</span>
-            <span class="era-tag" id="era-badge">EPOKA</span>
+            <span class="section-tag" id="section-badge">TEMAT</span>
+            <span class="step-counter" id="step-counter">1 / 12</span>
         </div>
-        <h2 id="slide-title">Kontekst historyczny</h2>
-        <p id="slide-desc">Ładowanie widoku 3D...</p>
+        <h2 id="slide-title">Ładowanie...</h2>
+        <p id="slide-desc">Przygotowywanie widoku...</p>
 
         <div class="controls" id="presenter-controls">
-            <button onclick="changeStep(-1)">Wstecz</button>
-            <button onclick="changeStep(1)">Dalej</button>
+            <button onclick="changeStep(-1)">◀ Wstecz</button>
+            <button onclick="changeStep(1)">Dalej ▶</button>
         </div>
     </div>
 
@@ -150,50 +200,161 @@
         const SECRET_PIN = '1234';
         const SUPABASE_URL = 'https://plzaadfybmpslfrohiek.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_qRKOTGcUUmG5g-z4HE3siA_3NpRoLw4';
-        const HISTORY_COLUMN = 'history_step'; // druga zmienna w tabeli presentation_state
+        const HISTORY_COLUMN = 'history_step';
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- DANE WYDARZENIA / TEMATU HISTORYCZNEGO ---
-        const HISTORICAL_EVENT = {
-            iso: 'GRC',
-            placeName: 'Ateny',
-            era: 'Starożytność • V w. p.n.e.',
-            lat: 37.9838,
-            lng: 23.7275,
-            backdropImage: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Parthenon_from_south_east.jpg/1280px-Parthenon_from_south_east.jpg',
-            slides: [
-                {
-                    title: 'Świat przed wydarzeniem',
-                    desc: 'Punkt wyjścia: układ sił, stosunki polityczne i tło epoki przed rozpoczęciem właściwych wydarzeń.',
-                    lat: 20, lng: 15, altitude: 2.4, autoRotate: true, showBackdrop: false, showPin: false
-                },
-                {
-                    title: 'Miejsce kluczowych wydarzeń: Ateny',
-                    desc: 'Lokalizacja na mapie świata i znaczenie geograficzne regionu dla przebiegu historii.',
-                    lat: 37.9838, lng: 23.7275, altitude: 1.0, autoRotate: false, showBackdrop: false, showPin: true
-                },
-                {
-                    title: 'Przyczyny, przebieg i zwrot akcji',
-                    desc: 'Najważniejsze decyzje, postacie i moment przełomowy, który zmienił dotychczasowy porządek.',
-                    lat: 37.9838, lng: 23.7275, altitude: 0.75, autoRotate: false, showBackdrop: false, showPin: true
-                },
-                {
-                    title: 'Skutki i dziedzictwo w historii',
-                    desc: 'Jakie konsekwencje przyniosło to wydarzenie i dlaczego pamiętamy o nim do dziś.',
-                    lat: 37.9838, lng: 23.7275, altitude: 0.14, autoRotate: false, showBackdrop: true, showPin: true
-                }
-            ]
+        // Współrzędne punktów w Polsce do płynnego zbliżania na kraj
+        const POLAND_LOCATIONS = {
+            polandCenter: { lat: 52.0, lng: 19.5, altitude: 0.52, label: 'Polska pod okupacją' },
+            zamosc:       { lat: 50.72, lng: 23.25, altitude: 0.42, label: 'Zamojszczyzna' },
+            warsaw:       { lat: 52.23, lng: 21.01, altitude: 0.44, label: 'Warszawa / Getto' },
+            markowa:      { lat: 50.03, lng: 22.33, altitude: 0.43, label: 'Markowa (Rodzina Ulmów)' },
+            wolyn:        { lat: 50.75, lng: 25.32, altitude: 0.45, label: 'Wołyń / Lipniki' }
         };
 
-        document.getElementById('era-badge').innerText = HISTORICAL_EVENT.era;
-
-        const preloadImg = new Image();
-        preloadImg.src = HISTORICAL_EVENT.backdropImage;
+        const SLIDES = [
+            {
+                tag: 'TEMAT 1/8',
+                title: 'Postawa Polaków wobec okupantów',
+                desc: 'Różnorodność postaw w realiach terroru: od otwartego oporu (konspiracja, tajne nauczanie, sabotaż), przez codzienne przetrwanie i bierny opór, po margines kolaboracji.',
+                loc: POLAND_LOCATIONS.polandCenter,
+                photos: []
+            },
+            {
+                tag: 'TEMAT 2/8',
+                title: 'Tragedia Zamojszczyzny',
+                desc: 'Niemieckie wysiedlenia (od listopada 1942 r.) mające na celu germanizację regionu i utworzenie niemieckich osad — rozdzielanie rodzin, pacyfikacje wsi i wywózki do obozów oraz na roboty przymusowe.',
+                loc: POLAND_LOCATIONS.zamosc,
+                photos: [
+                    {
+                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Zamosc_expulsions_1942.jpg/800px-Zamosc_expulsions_1942.jpg',
+                        caption: 'Oddział niemiecki na Zamojszczyźnie — wysiedlenia i pacyfikacje'
+                    }
+                ]
+            },
+            {
+                tag: 'TEMAT 3/8',
+                title: 'Zagłada polskich Żydów',
+                desc: 'Od izolacji, gett i pracy przymusowej po systematyczną eksterminację w obozach zagłady (m.in. Treblinka, Sobibór, Bełżec, Chełmno, Auschwitz-Birkenau).',
+                loc: POLAND_LOCATIONS.polandCenter,
+                photos: [
+                    {
+                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Auschwitz_ramp_selection.jpg/800px-Auschwitz_ramp_selection.jpg',
+                        caption: 'Selekcja więźniów — Zagłada polskich Żydów'
+                    }
+                ]
+            },
+            {
+                tag: 'TEMAT 4/8',
+                title: 'Powstanie w getcie warszawskim',
+                desc: 'Zbrojny zryw żydowskich organizacji podziemnych (m.in. ŻOB i ŻZW), rozpoczęty 19 kwietnia 1943 r. w obliczu likwidacji getta — walka o godność i opór wobec niemieckiej przewagi.',
+                loc: POLAND_LOCATIONS.warsaw,
+                photos: [
+                    {
+                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Stroop_Report_-_ZOB_fighters.jpg/800px-Stroop_Report_-_ZOB_fighters.jpg',
+                        caption: 'Powstańcy ŻOB — Powstanie w getcie warszawskim'
+                    },
+                    {
+                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Stroop_Report_-_Jews_captured.jpg/800px-Stroop_Report_-_Jews_captured.jpg',
+                        caption: 'Ludność żydowska podczas pacyfikacji getta warszawskiego'
+                    }
+                ]
+            },
+            {
+                tag: 'TEMAT 5/8',
+                title: 'Życie w okupowanej Warszawie (Polacy, Niemcy, Żydzi)',
+                desc: 'Równoległe, dramatycznie nierówne światy w jednym mieście: konspiracja i codzienna walka o przeżycie Polaków, pokazowa obecność i przywileje okupanta niemieckiego oraz zamknięcie i zagłada w getcie.',
+                loc: POLAND_LOCATIONS.warsaw,
+                photos: [
+                    {
+                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Pomnik_Jozefa_Poniatowskiego_w_Warszawie.jpg/800px-Pomnik_Jozefa_Poniatowskiego_w_Warszawie.jpg',
+                        caption: 'Pomnik księcia Józefa Poniatowskiego — Życie w okupowanej Warszawie (Polacy)'
+                    },
+                    {
+                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/German_parade_Warsaw_1939.jpg/800px-German_parade_Warsaw_1939.jpg',
+                        caption: 'Niemieckie przemarsze i parady wojskowe — Życie w okupowanej Warszawie (Niemcy)'
+                    },
+                    {
+                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Warsaw_tram_1940s.jpg/800px-Warsaw_tram_1940s.jpg',
+                        caption: 'Tramwaje i wagony kolejowe — podziały i codzienność okupowanej Warszawy'
+                    },
+                    {
+                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Warsaw_Ghetto_street_scene.jpg/800px-Warsaw_Ghetto_street_scene.jpg',
+                        caption: 'Na ulicach getta — Życie w okupowanej Warszawie (Żydzi)'
+                    }
+                ]
+            },
+            {
+                tag: 'TEMAT 6/8',
+                title: 'Polacy wobec Holokaustu',
+                desc: 'Pomoc udzielana Żydom mimo grożącej na ziemiach polskich kary śmierci dla całej rodziny — m.in. działalność Rady Pomocy Żydom „Żegota” oraz indywidualne ratowanie sąsiadów.',
+                loc: POLAND_LOCATIONS.markowa,
+                photos: [
+                    {
+                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Ulma_family_photo.jpg/800px-Ulma_family_photo.jpg',
+                        caption: 'Rodzina Ulmów z Markowej — Polacy wobec Holokaustu'
+                    }
+                ]
+            },
+            {
+                tag: 'TEMAT 7/8',
+                title: 'Irena Sendlerowa',
+                desc: 'Działaczka konspiracji i „Żegoty”, kierowniczka referatu dziecięcego — wraz ze współpracownikami uratowała z warszawskiego getta ponad 2500 dzieci, wyrabiając im fałszywe dokumenty i umieszczając w bezpiecznych miejscach.',
+                loc: POLAND_LOCATIONS.warsaw,
+                photos: [
+                    {
+                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Irena_Sendler_2006.jpg/800px-Irena_Sendler_2006.jpg',
+                        caption: 'Irena Sendlerowa'
+                    }
+                ]
+            },
+            {
+                tag: 'TEMAT 8/8',
+                title: 'Rzeź wołyńska',
+                desc: 'Masowe czystki etniczne dokonane przez nacjonalistów ukraińskich (UPA i OUN-B) na ludności polskiej na Wołyniu w 1943 r. (nasilone latem 1943 r.), połączone z paleniem wsi i brutalnymi mordami cywilów.',
+                loc: POLAND_LOCATIONS.wolyn,
+                photos: [
+                    {
+                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Lipniki_massacre_victims.jpg/800px-Lipniki_massacre_victims.jpg',
+                        caption: 'Ofiary zbrodni we wsi Lipniki — Rzeź wołyńska'
+                    }
+                ]
+            },
+            {
+                tag: 'PODSUMOWANIE 1/4',
+                title: 'Podsumowanie: Terror niemieckich władz okupacyjnych',
+                desc: 'Systematyczna przemoc, łapanki, egzekucje, obozy oraz wysiedlenia (np. na Zamojszczyźnie) miały złamać opór społeczeństwa i podporządkować ziemie polskie celom III Rzeszy.',
+                loc: POLAND_LOCATIONS.polandCenter,
+                photos: []
+            },
+            {
+                tag: 'PODSUMOWANIE 2/4',
+                title: 'Podsumowanie: Żydzi byli poddawani represjom',
+                desc: 'Od dyskryminacji i zamknięcia w gettach po masową zagładę — ludność żydowska stała się głównym celem polityki eksterminacyjnej okupanta.',
+                loc: POLAND_LOCATIONS.warsaw,
+                photos: []
+            },
+            {
+                tag: 'PODSUMOWANIE 3/4',
+                title: 'Podsumowanie: Część Polaków pomagała Żydom',
+                desc: 'Pomimo skrajnego ryzyka (kary śmierci za pomoc) wielu Polaków i struktur podziemnych (np. „Żegota”, Irena Sendlerowa, rodzina Ulmów) niosło realne wsparcie.',
+                loc: POLAND_LOCATIONS.markowa,
+                photos: []
+            },
+            {
+                tag: 'PODSUMOWANIE 4/4',
+                title: 'Podsumowanie: Rzeź wołyńska',
+                desc: 'Tragiczny rozdział dziejów pogranicza polsko-ukraińskiego podczas II wojny światowej — masowa zbrodnia na polskiej ludności cywilnej wymagająca pamięci i rzetelnej wiedzy historycznej.',
+                loc: POLAND_LOCATIONS.wolyn,
+                photos: []
+            }
+        ];
 
         let countriesData = [];
         let currentStep = 0;
-        const maxSteps = HISTORICAL_EVENT.slides.length - 1;
+        let currentPhotoIndex = 0;
+        const maxSteps = SLIDES.length - 1;
 
         const urlParams = new URLSearchParams(window.location.search);
         const isPresenter = urlParams.get('pilot') === SECRET_PIN;
@@ -212,65 +373,104 @@
             .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
             .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
             .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
-            .pointOfView({ lat: 20, lng: 15, altitude: 2.4 });
+            .pointOfView({ lat: 52.0, lng: 19.5, altitude: 0.52 });
 
-        world.controls().autoRotate = true;
-        world.controls().autoRotateSpeed = 0.7;
+        world.controls().autoRotate = false;
 
         fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson')
             .then(res => res.json())
-            .then(data => { countriesData = data.features; });
+            .then(data => {
+                countriesData = data.features;
+                highlightPoland();
+            });
+
+        function highlightPoland() {
+            const poland = countriesData.filter(d => d.properties.ADM0_A3 === 'POL');
+            if (!poland.length) return;
+            world
+                .polygonsData(poland)
+                .polygonCapColor(() => 'rgba(251, 191, 36, 0.25)')
+                .polygonSideColor(() => 'rgba(251, 191, 36, 0.6)')
+                .polygonStrokeColor(() => '#fbbf24')
+                .polygonAltitude(0.02);
+        }
+
+        function applyPhoto(slide, photoIdx) {
+            const backdrop = document.getElementById('scene-backdrop');
+            const photoBar = document.getElementById('photo-bar');
+            const captionEl = document.getElementById('photo-caption-text');
+            const prevBtn = document.getElementById('prev-photo-btn');
+            const nextBtn = document.getElementById('next-photo-btn');
+
+            if (!slide.photos || slide.photos.length === 0) {
+                backdrop.classList.remove('active');
+                photoBar.classList.remove('visible');
+                return;
+            }
+
+            const safeIdx = ((photoIdx % slide.photos.length) + slide.photos.length) % slide.photos.length;
+            currentPhotoIndex = safeIdx;
+            const photo = slide.photos[safeIdx];
+
+            backdrop.style.backgroundImage = `url('${photo.url}')`;
+            backdrop.classList.add('active');
+
+            captionEl.innerText = slide.photos.length > 1
+                ? `${photo.caption} (${safeIdx + 1}/${slide.photos.length})`
+                : photo.caption;
+
+            prevBtn.style.display = slide.photos.length > 1 ? 'inline-block' : 'none';
+            nextBtn.style.display = slide.photos.length > 1 ? 'inline-block' : 'none';
+            photoBar.classList.add('visible');
+        }
+
+        function cyclePhoto(delta) {
+            const slide = SLIDES[currentStep];
+            if (!slide || !slide.photos || slide.photos.length <= 1) return;
+            applyPhoto(slide, currentPhotoIndex + delta);
+        }
 
         function renderScene(step) {
-            const slide = HISTORICAL_EVENT.slides[step] || HISTORICAL_EVENT.slides[0];
-            const title = document.getElementById('slide-title');
-            const desc = document.getElementById('slide-desc');
-            const backdrop = document.getElementById('scene-backdrop');
+            const slide = SLIDES[step] || SLIDES[0];
+            currentPhotoIndex = 0;
 
-            title.innerText = slide.title;
-            desc.innerText = isPresenter && step === 0
-                ? `${slide.desc} (Kliknij „Dalej”, aby prowadzić klasę).`
-                : slide.desc;
+            document.getElementById('section-badge').innerText = slide.tag;
+            document.getElementById('step-counter').innerText = `${step + 1} / ${SLIDES.length}`;
+            document.getElementById('slide-title').innerText = slide.title;
+            document.getElementById('slide-desc').innerText = slide.desc;
 
-            if (!slide.showBackdrop) {
-                backdrop.classList.remove('active');
-            }
+            highlightPoland();
 
-            world.controls().autoRotate = slide.autoRotate;
-            world.pointOfView({ lat: slide.lat, lng: slide.lng, altitude: slide.altitude }, 1400);
+            world.htmlElementsData([{
+                lat: slide.loc.lat,
+                lng: slide.loc.lng,
+                label: slide.loc.label
+            }]).htmlElement(d => {
+                const el = document.createElement('div');
+                el.innerHTML = `<div class="poland-pin">📍 ${d.label}</div>`;
+                return el;
+            });
 
-            if (step === 0) {
-                world.polygonsData([]);
-                world.htmlElementsData([]);
-            } else if (slide.showPin) {
-                const selected = countriesData.filter(d => d.properties.ADM0_A3 === HISTORICAL_EVENT.iso);
-                world
-                    .polygonsData(selected)
-                    .polygonCapColor(() => 'rgba(251, 191, 36, 0.22)')
-                    .polygonSideColor(() => 'rgba(251, 191, 36, 0.55)')
-                    .polygonStrokeColor(() => '#fbbf24')
-                    .polygonAltitude(0.02);
+            // Najpierw zbliżenie na Polskę, a jeśli slajd ma zdjęcie — płynne wejście w kadr
+            document.getElementById('scene-backdrop').classList.remove('active');
+            document.getElementById('photo-bar').classList.remove('visible');
 
-                world
-                    .htmlElementsData([HISTORICAL_EVENT])
-                    .htmlElement(d => {
-                        const el = document.createElement('div');
-                        el.innerHTML = `<div class="history-pin">🏛️ ${d.placeName}</div>`;
-                        return el;
-                    });
-            }
+            world.pointOfView({
+                lat: slide.loc.lat,
+                lng: slide.loc.lng,
+                altitude: slide.loc.altitude
+            }, 1100);
 
-            if (slide.showBackdrop) {
+            if (slide.photos && slide.photos.length > 0) {
                 setTimeout(() => {
-                    backdrop.style.backgroundImage = `url('${HISTORICAL_EVENT.backdropImage}')`;
-                    backdrop.classList.add('active');
-                }, 850);
+                    applyPhoto(slide, 0);
+                }, 700);
             }
         }
 
         renderScene(0);
 
-        // --- POBIERANIE STANU Z BAZY CO 1 SEKUNDĘ (DRUGA ZMIENNA: history_step) ---
+        // --- POBIERANIE STANU Z BAZY CO 1 SEKUNDĘ (ZMIENNA: history_step) ---
         async function checkServerStep() {
             const { data, error } = await supabaseClient
                 .from('presentation_state')
@@ -310,6 +510,13 @@
                 console.error('Błąd zapisu:', error);
             }
         }
+
+        // Sterowanie strzałkami z klawiatury dla pilota
+        window.addEventListener('keydown', (e) => {
+            if (!isPresenter) return;
+            if (e.key === 'ArrowRight') changeStep(1);
+            if (e.key === 'ArrowLeft') changeStep(-1);
+        });
     </script>
 </body>
 </html>
