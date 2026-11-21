@@ -31,7 +31,7 @@
             box-sizing: border-box;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.7s ease;
+            transition: opacity 0.5s ease;
             z-index: 5;
         }
         #scene-backdrop.active {
@@ -233,9 +233,6 @@
         const SUPABASE_KEY = 'sb_publishable_qRKOTGcUUmG5g-z4HE3siA_3NpRoLw4';
         const HISTORY_COLUMN = 'history_step';
 
-        // Opóźnienie wejścia obrazu po zbliżeniu na mapę (w ms)
-        const PHOTO_REVEAL_DELAY_MS = 1600;
-
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const POLAND_LOCATIONS = {
@@ -387,7 +384,6 @@
         let countriesData = [];
         let currentStep = 0;
         let currentPhotoIndex = 0;
-        let photoRevealTimer = null;
         const maxSteps = SLIDES.length - 1;
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -492,11 +488,6 @@
         }
 
         function renderScene(step) {
-            if (photoRevealTimer) {
-                clearTimeout(photoRevealTimer);
-                photoRevealTimer = null;
-            }
-
             const slide = SLIDES[step] || SLIDES[0];
             currentPhotoIndex = 0;
 
@@ -524,12 +515,12 @@
                 lat: slide.loc.lat,
                 lng: slide.loc.lng,
                 altitude: slide.loc.altitude
-            }, 1200);
+            }, 1000);
 
             if (slide.photos && slide.photos.length > 0) {
-                photoRevealTimer = setTimeout(() => {
+                setTimeout(() => {
                     applyPhoto(slide, 0);
-                }, PHOTO_REVEAL_DELAY_MS);
+                }, 650);
             }
         }
 
