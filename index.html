@@ -20,6 +20,100 @@
             height: 100vh;
             transition: opacity 0.8s ease;
         }
+
+        /* --- ANIMACJA ZEGARA COFAJĄCEGO SIĘ W CZASIE --- */
+        #time-rewind-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            background: radial-gradient(circle at center, #0f172a 0%, #020617 75%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            opacity: 1;
+            transition: opacity 0.65s ease, visibility 0.65s ease;
+        }
+        #time-rewind-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .clock-dial {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 3px solid rgba(251, 191, 36, 0.7);
+            box-shadow: 0 0 35px rgba(251, 191, 36, 0.2), inset 0 0 25px rgba(2, 6, 23, 0.9);
+            background: rgba(15, 23, 42, 0.9);
+        }
+        .clock-tick {
+            position: absolute;
+            top: 6px;
+            left: 50%;
+            width: 2px;
+            height: 10px;
+            background: rgba(251, 191, 36, 0.45);
+            transform-origin: 50% 69px;
+        }
+        .clock-hand-minute {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            width: 3px;
+            height: 54px;
+            margin-left: -1.5px;
+            background: #fbbf24;
+            border-radius: 999px;
+            transform-origin: 50% 100%;
+            animation: spinReverse 1.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+        .clock-hand-hour {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            width: 4px;
+            height: 36px;
+            margin-left: -2px;
+            background: #f8fafc;
+            border-radius: 999px;
+            transform-origin: 50% 100%;
+            animation: spinReverseSlow 1.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+        .clock-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            margin: -6px 0 0 -6px;
+            border-radius: 50%;
+            background: #fbbf24;
+            box-shadow: 0 0 10px #fbbf24;
+        }
+        .rewind-year {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            color: #fbbf24;
+            font-variant-numeric: tabular-nums;
+        }
+        .rewind-label {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            letter-spacing: 0.5px;
+        }
+        @keyframes spinReverse {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(-720deg); }
+        }
+        @keyframes spinReverseSlow {
+            from { transform: rotate(90deg); }
+            to { transform: rotate(-270deg); }
+        }
+
         #scene-backdrop {
             position: fixed;
             inset: 0;
@@ -194,6 +288,16 @@
 </head>
 <body>
 
+    <div id="time-rewind-overlay">
+        <div class="clock-dial" id="clock-dial">
+            <div class="clock-hand-hour"></div>
+            <div class="clock-hand-minute"></div>
+            <div class="clock-center"></div>
+        </div>
+        <div class="rewind-year" id="rewind-year">1945</div>
+        <div class="rewind-label">Cofamy się do czasów okupacji...</div>
+    </div>
+
     <div id="globeViz"></div>
 
     <div id="scene-backdrop">
@@ -234,6 +338,45 @@
         const HISTORY_COLUMN = 'history_step';
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- PODZIAŁKI NA TARCZY ZEGARA I ANIMACJA COFANIA CZASU ---
+        (function initClockDial() {
+            const dial = document.getElementById('clock-dial');
+            for (let i = 0; i < 12; i++) {
+                const tick = document.createElement('div');
+                tick.className = 'clock-tick';
+                tick.style.transform = `translateX(-50%) rotate(${i * 30}deg)`;
+                dial.appendChild(tick);
+            }
+        })();
+
+        let rewindPlayed = false;
+        let rewindTimer = null;
+
+        function hideTimeRewind() {
+            clearInterval(rewindTimer);
+            document.getElementById('time-rewind-overlay').classList.add('hidden');
+        }
+
+        function playTimeRewindOnce() {
+            if (rewindPlayed) return;
+            rewindPlayed = true;
+
+            const years = ['1945', '1944', '1943', '1942', '1941', '1940', '1939'];
+            const yearEl = document.getElementById('rewind-year');
+            let idx = 0;
+            yearEl.innerText = years[0];
+
+            rewindTimer = setInterval(() => {
+                idx++;
+                if (idx < years.length) {
+                    yearEl.innerText = years[idx];
+                } else {
+                    clearInterval(rewindTimer);
+                    setTimeout(hideTimeRewind, 350);
+                }
+            }, 210);
+        }
 
         const POLAND_LOCATIONS = {
             polandCenter: { lat: 52.0, lng: 19.5, altitude: 0.52, label: 'Polska pod okupacją' },
@@ -488,6 +631,12 @@
         }
 
         function renderScene(step) {
+            if (step === 0) {
+                playTimeRewindOnce();
+            } else {
+                hideTimeRewind();
+            }
+
             const slide = SLIDES[step] || SLIDES[0];
             currentPhotoIndex = 0;
 
@@ -549,6 +698,7 @@
         // --- ZAPIS NOWEGO KROKU DO BAZY (DLA PILOTA) ---
         async function changeStep(delta) {
             if (!isPresenter) return;
+            hideTimeRewind();
 
             let next = currentStep + delta;
             if (next < 0) next = 0;
