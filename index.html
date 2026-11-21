@@ -23,30 +23,53 @@
         #scene-backdrop {
             position: fixed;
             inset: 0;
-            background-color: #0f172a;
-            background-size: cover;
-            background-position: center;
+            background-color: #090f1d;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 24px 190px 24px;
+            box-sizing: border-box;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.8s ease, transform 6s ease-out;
-            transform: scale(1.08);
+            transition: opacity 0.5s ease;
             z-index: 5;
         }
         #scene-backdrop.active {
+            display: flex;
             opacity: 1;
             pointer-events: auto;
-            transform: scale(1);
         }
         #scene-backdrop::after {
             content: '';
-            position: absolute;
+            position: fixed;
             inset: 0;
-            background: linear-gradient(
-                to top,
-                rgba(2, 6, 23, 0.96) 22%,
-                rgba(2, 6, 23, 0.35) 62%,
-                rgba(2, 6, 23, 0.65) 100%
-            );
+            background: radial-gradient(circle at center, rgba(2, 6, 23, 0.25) 0%, rgba(2, 6, 23, 0.88) 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+        #slide-image {
+            position: relative;
+            z-index: 2;
+            max-width: min(92vw, 960px);
+            max-height: calc(100vh - 250px);
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 14px;
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75);
+        }
+        #image-fallback {
+            position: relative;
+            z-index: 2;
+            display: none;
+            max-width: 540px;
+            text-align: center;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px dashed rgba(251, 191, 36, 0.5);
+            border-radius: 14px;
+            padding: 24px;
+            color: #fde68a;
         }
         .photo-caption-bar {
             position: fixed;
@@ -57,13 +80,13 @@
             display: none;
             align-items: center;
             gap: 10px;
-            background: rgba(15, 23, 42, 0.9);
+            background: rgba(15, 23, 42, 0.92);
             border: 1px solid rgba(251, 191, 36, 0.4);
             padding: 8px 14px;
             border-radius: 12px;
             font-size: 0.85rem;
             color: #fde68a;
-            max-width: 90%;
+            max-width: 92%;
             backdrop-filter: blur(8px);
         }
         .photo-caption-bar.visible {
@@ -82,11 +105,11 @@
             transform: translateX(-50%);
             width: 92%;
             max-width: 620px;
-            background: rgba(15, 23, 42, 0.9);
+            background: rgba(15, 23, 42, 0.92);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(251, 191, 36, 0.35);
             border-radius: 16px;
-            padding: 20px;
+            padding: 18px 20px;
             box-sizing: border-box;
             z-index: 10;
             transition: all 0.4s ease;
@@ -121,30 +144,30 @@
             margin-left: auto;
         }
         h2 {
-            margin: 0 0 8px 0;
-            font-size: 1.25rem;
+            margin: 0 0 6px 0;
+            font-size: 1.2rem;
             color: #fbbf24;
         }
         p {
-            margin: 0 0 10px 0;
-            font-size: 0.95rem;
-            line-height: 1.5;
+            margin: 0 0 8px 0;
+            font-size: 0.92rem;
+            line-height: 1.48;
             color: #e2e8f0;
         }
         .controls {
             display: none;
             gap: 10px;
-            margin-top: 14px;
+            margin-top: 12px;
         }
         button {
             flex: 1;
             background: #fbbf24;
             color: #020617;
             border: none;
-            padding: 11px 14px;
+            padding: 10px 14px;
             border-radius: 10px;
             font-weight: bold;
-            font-size: 0.98rem;
+            font-size: 0.95rem;
             cursor: pointer;
         }
         button:hover { filter: brightness(1.05); }
@@ -172,7 +195,15 @@
 <body>
 
     <div id="globeViz"></div>
-    <div id="scene-backdrop"></div>
+
+    <div id="scene-backdrop">
+        <img id="slide-image" alt="" />
+        <div id="image-fallback">
+            <div style="font-weight:bold; margin-bottom:6px;">⚠️ Nie udało się wczytać obrazu</div>
+            <div id="fallback-caption" style="margin-bottom:8px;"></div>
+            <small id="fallback-url" style="color:#94a3b8; word-break:break-all;"></small>
+        </div>
+    </div>
 
     <div class="photo-caption-bar" id="photo-bar">
         <button id="prev-photo-btn" onclick="cyclePhoto(-1)">◀</button>
@@ -204,7 +235,6 @@
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Współrzędne punktów w Polsce do płynnego zbliżania na kraj
         const POLAND_LOCATIONS = {
             polandCenter: { lat: 52.0, lng: 19.5, altitude: 0.52, label: 'Polska pod okupacją' },
             zamosc:       { lat: 50.72, lng: 23.25, altitude: 0.42, label: 'Zamojszczyzna' },
@@ -228,8 +258,8 @@
                 loc: POLAND_LOCATIONS.zamosc,
                 photos: [
                     {
-                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Zamosc_expulsions_1942.jpg/800px-Zamosc_expulsions_1942.jpg',
-                        caption: 'Oddział niemiecki na Zamojszczyźnie — wysiedlenia i pacyfikacje'
+                        url: 'https://muzeum-ak.pl/aaopracowania/zdjecia2/250204112618wysiedlenia.jpg',
+                        caption: 'Oddział niemiecki na Zamojszczyźnie'
                     }
                 ]
             },
@@ -240,8 +270,8 @@
                 loc: POLAND_LOCATIONS.polandCenter,
                 photos: [
                     {
-                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Auschwitz_ramp_selection.jpg/800px-Auschwitz_ramp_selection.jpg',
-                        caption: 'Selekcja więźniów — Zagłada polskich Żydów'
+                        url: 'https://assets.isu.pub/document-structure/230414064805-3e24bdbd16ba83d0c4d5cd1845e1da95/v1/3682edc6e8db84edb1255eb27d0543e9.jpeg',
+                        caption: 'Selekcja więźniów'
                     }
                 ]
             },
@@ -252,12 +282,12 @@
                 loc: POLAND_LOCATIONS.warsaw,
                 photos: [
                     {
-                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Stroop_Report_-_ZOB_fighters.jpg/800px-Stroop_Report_-_ZOB_fighters.jpg',
-                        caption: 'Powstańcy ŻOB — Powstanie w getcie warszawskim'
+                        url: 'https://i.gremicdn.pl/image/free/e9040b222e455cefda14e70449f8d737/?t=resize:fill:948:593,enlarge:1',
+                        caption: 'Powstańcy z ŻOB'
                     },
                     {
-                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Stroop_Report_-_Jews_captured.jpg/800px-Stroop_Report_-_Jews_captured.jpg',
-                        caption: 'Ludność żydowska podczas pacyfikacji getta warszawskiego'
+                        url: 'https://bi.im-g.pl/im/ce/89/17/z24682190AMP,Zydzi-wypedzani-z-warszawskiego-getta-po-stlumieni.jpg',
+                        caption: 'Ludność żydowska'
                     }
                 ]
             },
@@ -268,19 +298,19 @@
                 loc: POLAND_LOCATIONS.warsaw,
                 photos: [
                     {
-                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Pomnik_Jozefa_Poniatowskiego_w_Warszawie.jpg/800px-Pomnik_Jozefa_Poniatowskiego_w_Warszawie.jpg',
+                        url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTRme_zKw3YgDAIKvvXCl71V_zy0bN3FsRZ6Tw0gEwicA&s=10',
                         caption: 'Pomnik księcia Józefa Poniatowskiego — Życie w okupowanej Warszawie (Polacy)'
                     },
                     {
-                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/German_parade_Warsaw_1939.jpg/800px-German_parade_Warsaw_1939.jpg',
-                        caption: 'Niemieckie przemarsze i parady wojskowe — Życie w okupowanej Warszawie (Niemcy)'
+                        url: 'https://dzieje.pl/sites/default/files/styles/open_article_750x0_/public/201612/hitler_warszawa.jpg?itok=o2KCmlZR',
+                        caption: 'Niemieckie przemarsze, a także parady wojskowe — Życie w okupowanej Warszawie (Niemcy)'
                     },
                     {
-                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Warsaw_tram_1940s.jpg/800px-Warsaw_tram_1940s.jpg',
-                        caption: 'Tramwaje i wagony kolejowe — podziały i codzienność okupowanej Warszawy'
+                        url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSjfdl8XAK0uAztGW9Hpk7AR_ZBYgILEESoerxk_e7R2A&s',
+                        caption: 'Tramwaje i wagony kolejowe — Życie w okupowanej Warszawie (Niemcy)'
                     },
                     {
-                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Warsaw_Ghetto_street_scene.jpg/800px-Warsaw_Ghetto_street_scene.jpg',
+                        url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQG6eB-eptxWTrZbaVfoeCG_KvvexIK2Axlu1TeEa-0dA&s=10',
                         caption: 'Na ulicach getta — Życie w okupowanej Warszawie (Żydzi)'
                     }
                 ]
@@ -292,8 +322,8 @@
                 loc: POLAND_LOCATIONS.markowa,
                 photos: [
                     {
-                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Ulma_family_photo.jpg/800px-Ulma_family_photo.jpg',
-                        caption: 'Rodzina Ulmów z Markowej — Polacy wobec Holokaustu'
+                        url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTdwRTTrlDW20qled-SW-cGU9GKvUP8IDCvtRqDGBgnew&s=10',
+                        caption: 'Rodzina Ulmów — Polacy wobec Holokaustu'
                     }
                 ]
             },
@@ -304,7 +334,7 @@
                 loc: POLAND_LOCATIONS.warsaw,
                 photos: [
                     {
-                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Irena_Sendler_2006.jpg/800px-Irena_Sendler_2006.jpg',
+                        url: 'https://www.jhi.pl/storage/image/core_files/2020/10/26/84a958331ade091333b237f472fd96a2/jpg/jhi/normal_big/wide_Irena_Sendlerowa_1942_3.jpg',
                         caption: 'Irena Sendlerowa'
                     }
                 ]
@@ -316,8 +346,8 @@
                 loc: POLAND_LOCATIONS.wolyn,
                 photos: [
                     {
-                        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Lipniki_massacre_victims.jpg/800px-Lipniki_massacre_victims.jpg',
-                        caption: 'Ofiary zbrodni we wsi Lipniki — Rzeź wołyńska'
+                        url: '',
+                        caption: 'Ciała Polaków we wsi Lipniki — Rzeź wołyńska'
                     }
                 ]
             },
@@ -401,10 +431,15 @@
             const captionEl = document.getElementById('photo-caption-text');
             const prevBtn = document.getElementById('prev-photo-btn');
             const nextBtn = document.getElementById('next-photo-btn');
+            const imgEl = document.getElementById('slide-image');
+            const fallbackEl = document.getElementById('image-fallback');
+            const fallbackCaption = document.getElementById('fallback-caption');
+            const fallbackUrl = document.getElementById('fallback-url');
 
             if (!slide.photos || slide.photos.length === 0) {
                 backdrop.classList.remove('active');
                 photoBar.classList.remove('visible');
+                imgEl.removeAttribute('src');
                 return;
             }
 
@@ -412,9 +447,7 @@
             currentPhotoIndex = safeIdx;
             const photo = slide.photos[safeIdx];
 
-            backdrop.style.backgroundImage = `url('${photo.url}')`;
             backdrop.classList.add('active');
-
             captionEl.innerText = slide.photos.length > 1
                 ? `${photo.caption} (${safeIdx + 1}/${slide.photos.length})`
                 : photo.caption;
@@ -422,6 +455,30 @@
             prevBtn.style.display = slide.photos.length > 1 ? 'inline-block' : 'none';
             nextBtn.style.display = slide.photos.length > 1 ? 'inline-block' : 'none';
             photoBar.classList.add('visible');
+
+            if (!photo.url) {
+                imgEl.style.display = 'none';
+                fallbackEl.style.display = 'block';
+                fallbackCaption.innerText = photo.caption;
+                fallbackUrl.innerText = 'Brak przypisanego linku (url) dla tego zdjęcia w tablicy SLIDES.';
+                return;
+            }
+
+            imgEl.style.display = 'block';
+            fallbackEl.style.display = 'none';
+            imgEl.alt = photo.caption;
+
+            imgEl.onload = () => {
+                imgEl.style.display = 'block';
+                fallbackEl.style.display = 'none';
+            };
+            imgEl.onerror = () => {
+                imgEl.style.display = 'none';
+                fallbackEl.style.display = 'block';
+                fallbackCaption.innerText = photo.caption;
+                fallbackUrl.innerText = photo.url;
+            };
+            imgEl.src = photo.url;
         }
 
         function cyclePhoto(delta) {
@@ -451,7 +508,6 @@
                 return el;
             });
 
-            // Najpierw zbliżenie na Polskę, a jeśli slajd ma zdjęcie — płynne wejście w kadr
             document.getElementById('scene-backdrop').classList.remove('active');
             document.getElementById('photo-bar').classList.remove('visible');
 
@@ -459,12 +515,12 @@
                 lat: slide.loc.lat,
                 lng: slide.loc.lng,
                 altitude: slide.loc.altitude
-            }, 1100);
+            }, 1000);
 
             if (slide.photos && slide.photos.length > 0) {
                 setTimeout(() => {
                     applyPhoto(slide, 0);
-                }, 700);
+                }, 650);
             }
         }
 
@@ -511,7 +567,6 @@
             }
         }
 
-        // Sterowanie strzałkami z klawiatury dla pilota
         window.addEventListener('keydown', (e) => {
             if (!isPresenter) return;
             if (e.key === 'ArrowRight') changeStep(1);
