@@ -331,6 +331,40 @@
     </div>
 
     <script>
+        // --- UTRZYMANIE WŁĄCZONEGO EKRANU NA TELEFONIE (SCREEN WAKE LOCK) ---
+let wakeLockSentinel = null;
+
+async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    if (document.visibilityState !== 'visible') return;
+    if (wakeLockSentinel && !wakeLockSentinel.released) return;
+
+    try {
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+        wakeLockSentinel.addEventListener('release', () => {
+            wakeLockSentinel = null;
+        });
+    } catch (err) {
+        // Np. słaba bateria lub tryb oszczędzania energii — ignorujemy bez błędu
+        console.debug('Wake Lock niedostępny:', err);
+    }
+}
+
+// Próba włączenia od razu po załadowaniu strony
+requestWakeLock();
+
+// Ponowne włączenie po powrocie do karty na telefonie
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        requestWakeLock();
+    }
+});
+
+// Dodatkowy bezpiecznik po pierwszym kliknięciu / dotknięciu ekranu
+window.addEventListener('pointerdown', () => {
+    requestWakeLock();
+}, { once: false });
+        
         // --- KONFIGURACJA SUPABASE ---
         const SECRET_PIN = '1234';
         const SUPABASE_URL = 'https://plzaadfybmpslfrohiek.supabase.co';
