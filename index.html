@@ -31,7 +31,7 @@
             box-sizing: border-box;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.9s ease;
             z-index: 5;
         }
         #scene-backdrop.active {
@@ -233,6 +233,9 @@
         const SUPABASE_KEY = 'sb_publishable_qRKOTGcUUmG5g-z4HE3siA_3NpRoLw4';
         const HISTORY_COLUMN = 'history_step';
 
+        // Opóźnienie wejścia zdjęcia po starcie lotu kamery (w milisekundach)
+        const PHOTO_REVEAL_DELAY_MS = 1650;
+
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const POLAND_LOCATIONS = {
@@ -384,6 +387,7 @@
         let countriesData = [];
         let currentStep = 0;
         let currentPhotoIndex = 0;
+        let photoRevealTimer = null;
         const maxSteps = SLIDES.length - 1;
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -401,177 +405,4 @@
         const world = Globe()
             (document.getElementById('globeViz'))
             .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
-            .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
-            .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
-            .pointOfView({ lat: 52.0, lng: 19.5, altitude: 0.52 });
-
-        world.controls().autoRotate = false;
-
-        fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson')
-            .then(res => res.json())
-            .then(data => {
-                countriesData = data.features;
-                highlightPoland();
-            });
-
-        function highlightPoland() {
-            const poland = countriesData.filter(d => d.properties.ADM0_A3 === 'POL');
-            if (!poland.length) return;
-            world
-                .polygonsData(poland)
-                .polygonCapColor(() => 'rgba(251, 191, 36, 0.25)')
-                .polygonSideColor(() => 'rgba(251, 191, 36, 0.6)')
-                .polygonStrokeColor(() => '#fbbf24')
-                .polygonAltitude(0.02);
-        }
-
-        function applyPhoto(slide, photoIdx) {
-            const backdrop = document.getElementById('scene-backdrop');
-            const photoBar = document.getElementById('photo-bar');
-            const captionEl = document.getElementById('photo-caption-text');
-            const prevBtn = document.getElementById('prev-photo-btn');
-            const nextBtn = document.getElementById('next-photo-btn');
-            const imgEl = document.getElementById('slide-image');
-            const fallbackEl = document.getElementById('image-fallback');
-            const fallbackCaption = document.getElementById('fallback-caption');
-            const fallbackUrl = document.getElementById('fallback-url');
-
-            if (!slide.photos || slide.photos.length === 0) {
-                backdrop.classList.remove('active');
-                photoBar.classList.remove('visible');
-                imgEl.removeAttribute('src');
-                return;
-            }
-
-            const safeIdx = ((photoIdx % slide.photos.length) + slide.photos.length) % slide.photos.length;
-            currentPhotoIndex = safeIdx;
-            const photo = slide.photos[safeIdx];
-
-            backdrop.classList.add('active');
-            captionEl.innerText = slide.photos.length > 1
-                ? `${photo.caption} (${safeIdx + 1}/${slide.photos.length})`
-                : photo.caption;
-
-            prevBtn.style.display = slide.photos.length > 1 ? 'inline-block' : 'none';
-            nextBtn.style.display = slide.photos.length > 1 ? 'inline-block' : 'none';
-            photoBar.classList.add('visible');
-
-            if (!photo.url) {
-                imgEl.style.display = 'none';
-                fallbackEl.style.display = 'block';
-                fallbackCaption.innerText = photo.caption;
-                fallbackUrl.innerText = 'Brak przypisanego linku (url) dla tego zdjęcia w tablicy SLIDES.';
-                return;
-            }
-
-            imgEl.style.display = 'block';
-            fallbackEl.style.display = 'none';
-            imgEl.alt = photo.caption;
-
-            imgEl.onload = () => {
-                imgEl.style.display = 'block';
-                fallbackEl.style.display = 'none';
-            };
-            imgEl.onerror = () => {
-                imgEl.style.display = 'none';
-                fallbackEl.style.display = 'block';
-                fallbackCaption.innerText = photo.caption;
-                fallbackUrl.innerText = photo.url;
-            };
-            imgEl.src = photo.url;
-        }
-
-        function cyclePhoto(delta) {
-            const slide = SLIDES[currentStep];
-            if (!slide || !slide.photos || slide.photos.length <= 1) return;
-            applyPhoto(slide, currentPhotoIndex + delta);
-        }
-
-        function renderScene(step) {
-            const slide = SLIDES[step] || SLIDES[0];
-            currentPhotoIndex = 0;
-
-            document.getElementById('section-badge').innerText = slide.tag;
-            document.getElementById('step-counter').innerText = `${step + 1} / ${SLIDES.length}`;
-            document.getElementById('slide-title').innerText = slide.title;
-            document.getElementById('slide-desc').innerText = slide.desc;
-
-            highlightPoland();
-
-            world.htmlElementsData([{
-                lat: slide.loc.lat,
-                lng: slide.loc.lng,
-                label: slide.loc.label
-            }]).htmlElement(d => {
-                const el = document.createElement('div');
-                el.innerHTML = `<div class="poland-pin">📍 ${d.label}</div>`;
-                return el;
-            });
-
-            document.getElementById('scene-backdrop').classList.remove('active');
-            document.getElementById('photo-bar').classList.remove('visible');
-
-            world.pointOfView({
-                lat: slide.loc.lat,
-                lng: slide.loc.lng,
-                altitude: slide.loc.altitude
-            }, 1000);
-
-            if (slide.photos && slide.photos.length > 0) {
-                setTimeout(() => {
-                    applyPhoto(slide, 0);
-                }, 650);
-            }
-        }
-
-        renderScene(0);
-
-        // --- POBIERANIE STANU Z BAZY CO 1 SEKUNDĘ (ZMIENNA: history_step) ---
-        async function checkServerStep() {
-            const { data, error } = await supabaseClient
-                .from('presentation_state')
-                .select(HISTORY_COLUMN)
-                .eq('id', 'main')
-                .single();
-
-            const remoteStep = data?.[HISTORY_COLUMN];
-            if (!error && typeof remoteStep === 'number') {
-                if (remoteStep !== currentStep) {
-                    currentStep = remoteStep;
-                    renderScene(currentStep);
-                }
-            }
-        }
-
-        setInterval(checkServerStep, 1000);
-        checkServerStep();
-
-        // --- ZAPIS NOWEGO KROKU DO BAZY (DLA PILOTA) ---
-        async function changeStep(delta) {
-            if (!isPresenter) return;
-
-            let next = currentStep + delta;
-            if (next < 0) next = 0;
-            if (next > maxSteps) next = maxSteps;
-
-            const { error } = await supabaseClient
-                .from('presentation_state')
-                .update({ [HISTORY_COLUMN]: next })
-                .eq('id', 'main');
-
-            if (!error) {
-                currentStep = next;
-                renderScene(currentStep);
-            } else {
-                console.error('Błąd zapisu:', error);
-            }
-        }
-
-        window.addEventListener('keydown', (e) => {
-            if (!isPresenter) return;
-            if (e.key === 'ArrowRight') changeStep(1);
-            if (e.key === 'ArrowLeft') changeStep(-1);
-        });
-    </script>
-</body>
-</html>
+            .bumpImageUrl('
