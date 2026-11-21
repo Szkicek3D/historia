@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktywna Prezentacja 3D - Historia</title>
+    <script src="https://unpkg.com/globe.gl"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #020617;
+            color: #f8fafc;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden;
+        }
+        #globeViz {
+            width: 100vw;
+            height: 100vh;
+            transition: opacity 0.8s ease;
+        }
+        #scene-backdrop {
+            position: fixed;
+            inset: 0;
+            background-color: #0f172a;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s ease, transform 6s ease-out;
+            transform: scale(1.12);
+            z-index: 5;
+        }
+        #scene-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+        #scene-backdrop::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(2, 6, 23, 0.95) 18%, rgba(2, 6, 23, 0.25) 60%, rgba(2, 6, 23, 0.55) 100%);
+        }
+        .ui-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 540px;
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            border-radius: 16px;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 10;
+            transition: all 0.4s ease;
+        }
+        .era-tag {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.14);
+            padding: 3px 8px;
+            border-radius: 6px;
+            margin-left: 6px;
+        }
+        h2 {
+            margin: 0 0 8px 0;
+            font-size: 1.25rem;
+            color: #fbbf24;
+        }
+        p {
+            margin: 0 0 10px 0;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: #cbd5e1;
+        }
+        .controls {
+            display: none;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        button {
+            flex: 1;
+            background: #fbbf24;
+            color: #020617;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        button:active { opacity: 0.8; }
+        .live-badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.15);
+            padding: 3px 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .history-pin {
+            background: rgba(15, 23, 42, 0.92);
+            border: 2px solid #fbbf24;
+            padding: 6px 12px;
+            border-radius: 20px;
+            color: #fef3c7;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="globeViz"></div>
+    <div id="scene-backdrop"></div>
+
+    <div class="ui-overlay">
+        <div>
+            <span class="live-badge" id="status-badge">🟢 Łączenie z bazą...</span>
+            <span class="era-tag" id="era-badge">EPOKA</span>
+        </div>
+        <h2 id="slide-title">Kontekst historyczny</h2>
+        <p id="slide-desc">Ładowanie widoku 3D...</p>
+
+        <div class="controls" id="presenter-controls">
+            <button onclick="changeStep(-1)">Wstecz</button>
+            <button onclick="changeStep(1)">Dalej</button>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURACJA SUPABASE ---
+        const SECRET_PIN = '1234';
+        const SUPABASE_URL = 'https://plzaadfybmpslfrohiek.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_qRKOTGcUUmG5g-z4HE3siA_3NpRoLw4';
+        const HISTORY_COLUMN = 'history_step'; // druga zmienna w tabeli presentation_state
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- DANE WYDARZENIA / TEMATU HISTORYCZNEGO ---
+        const HISTORICAL_EVENT = {
+            iso: 'GRC',
+            placeName: 'Ateny',
+            era: 'Starożytność • V w. p.n.e.',
+            lat: 37.9838,
+            lng: 23.7275,
+            backdropImage: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Parthenon_from_south_east.jpg/1280px-Parthenon_from_south_east.jpg',
+            slides: [
+                {
+                    title: 'Świat przed wydarzeniem',
+                    desc: 'Punkt wyjścia: układ sił, stosunki polityczne i tło epoki przed rozpoczęciem właściwych wydarzeń.',
+                    lat: 20, lng: 15, altitude: 2.4, autoRotate: true, showBackdrop: false, showPin: false
+                },
+                {
+                    title: 'Miejsce kluczowych wydarzeń: Ateny',
+                    desc: 'Lokalizacja na mapie świata i znaczenie geograficzne regionu dla przebiegu historii.',
+                    lat: 37.9838, lng: 23.7275, altitude: 1.0, autoRotate: false, showBackdrop: false, showPin: true
+                },
+                {
+                    title: 'Przyczyny, przebieg i zwrot akcji',
+                    desc: 'Najważniejsze decyzje, postacie i moment przełomowy, który zmienił dotychczasowy porządek.',
+                    lat: 37.9838, lng: 23.7275, altitude: 0.75, autoRotate: false, showBackdrop: false, showPin: true
+                },
+                {
+                    title: 'Skutki i dziedzictwo w historii',
+                    desc: 'Jakie konsekwencje przyniosło to wydarzenie i dlaczego pamiętamy o nim do dziś.',
+                    lat: 37.9838, lng: 23.7275, altitude: 0.14, autoRotate: false, showBackdrop: true, showPin: true
+                }
+            ]
+        };
+
+        document.getElementById('era-badge').innerText = HISTORICAL_EVENT.era;
+
+        const preloadImg = new Image();
+        preloadImg.src = HISTORICAL_EVENT.backdropImage;
+
+        let countriesData = [];
+        let currentStep = 0;
+        const maxSteps = HISTORICAL_EVENT.slides.length - 1;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const isPresenter = urlParams.get('pilot') === SECRET_PIN;
+
+        if (isPresenter) {
+            document.getElementById('presenter-controls').style.display = 'flex';
+            document.getElementById('status-badge').innerText = '👑 TRYB PILOTA AKTYWNY';
+            document.getElementById('status-badge').style.color = '#fbbf24';
+        } else {
+            document.getElementById('status-badge').innerText = '🟢 POŁĄCZONO NA ŻYWO';
+            document.getElementById('status-badge').style.color = '#4ade80';
+        }
+
+        const world = Globe()
+            (document.getElementById('globeViz'))
+            .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+            .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+            .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
+            .pointOfView({ lat: 20, lng: 15, altitude: 2.4 });
+
+        world.controls().autoRotate = true;
+        world.controls().autoRotateSpeed = 0.7;
+
+        fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson')
+            .then(res => res.json())
+            .then(data => { countriesData = data.features; });
+
+        function renderScene(step) {
+            const slide = HISTORICAL_EVENT.slides[step] || HISTORICAL_EVENT.slides[0];
+            const title = document.getElementById('slide-title');
+            const desc = document.getElementById('slide-desc');
+            const backdrop = document.getElementById('scene-backdrop');
+
+            title.innerText = slide.title;
+            desc.innerText = isPresenter && step === 0
+                ? `${slide.desc} (Kliknij „Dalej”, aby prowadzić klasę).`
+                : slide.desc;
+
+            if (!slide.showBackdrop) {
+                backdrop.classList.remove('active');
+            }
+
+            world.controls().autoRotate = slide.autoRotate;
+            world.pointOfView({ lat: slide.lat, lng: slide.lng, altitude: slide.altitude }, 1400);
+
+            if (step === 0) {
+                world.polygonsData([]);
+                world.htmlElementsData([]);
+            } else if (slide.showPin) {
+                const selected = countriesData.filter(d => d.properties.ADM0_A3 === HISTORICAL_EVENT.iso);
+                world
+                    .polygonsData(selected)
+                    .polygonCapColor(() => 'rgba(251, 191, 36, 0.22)')
+                    .polygonSideColor(() => 'rgba(251, 191, 36, 0.55)')
+                    .polygonStrokeColor(() => '#fbbf24')
+                    .polygonAltitude(0.02);
+
+                world
+                    .htmlElementsData([HISTORICAL_EVENT])
+                    .htmlElement(d => {
+                        const el = document.createElement('div');
+                        el.innerHTML = `<div class="history-pin">🏛️ ${d.placeName}</div>`;
+                        return el;
+                    });
+            }
+
+            if (slide.showBackdrop) {
+                setTimeout(() => {
+                    backdrop.style.backgroundImage = `url('${HISTORICAL_EVENT.backdropImage}')`;
+                    backdrop.classList.add('active');
+                }, 850);
+            }
+        }
+
+        renderScene(0);
+
+        // --- POBIERANIE STANU Z BAZY CO 1 SEKUNDĘ (DRUGA ZMIENNA: history_step) ---
+        async function checkServerStep() {
+            const { data, error } = await supabaseClient
+                .from('presentation_state')
+                .select(HISTORY_COLUMN)
+                .eq('id', 'main')
+                .single();
+
+            const remoteStep = data?.[HISTORY_COLUMN];
+            if (!error && typeof remoteStep === 'number') {
+                if (remoteStep !== currentStep) {
+                    currentStep = remoteStep;
+                    renderScene(currentStep);
+                }
+            }
+        }
+
+        setInterval(checkServerStep, 1000);
+        checkServerStep();
+
+        // --- ZAPIS NOWEGO KROKU DO BAZY (DLA PILOTA) ---
+        async function changeStep(delta) {
+            if (!isPresenter) return;
+
+            let next = currentStep + delta;
+            if (next < 0) next = 0;
+            if (next > maxSteps) next = maxSteps;
+
+            const { error } = await supabaseClient
+                .from('presentation_state')
+                .update({ [HISTORY_COLUMN]: next })
+                .eq('id', 'main');
+
+            if (!error) {
+                currentStep = next;
+                renderScene(currentStep);
+            } else {
+                console.error('Błąd zapisu:', error);
+            }
+        }
+    </script>
+</body>
+</html>
