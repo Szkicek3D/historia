@@ -198,8 +198,8 @@
             left: 50%;
             transform: translateX(-50%);
             width: 92%;
-            max-width: 620px;
-            background: rgba(15, 23, 42, 0.92);
+            max-width: 650px;
+            background: rgba(15, 23, 42, 0.94);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(251, 191, 36, 0.35);
             border-radius: 16px;
@@ -238,7 +238,7 @@
             margin-left: auto;
         }
         h2 {
-            margin: 0 0 6px 0;
+            margin: 0 0 8px 0;
             font-size: 1.2rem;
             color: #fbbf24;
         }
@@ -248,6 +248,119 @@
             line-height: 1.48;
             color: #e2e8f0;
         }
+
+        /* --- GUZIKI I WYSUWANE OKIENKO Z DOKŁADNIEJSZYM OPISEM --- */
+        .desc-buttons-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-top: 4px;
+        }
+        .info-trigger-btn {
+            flex: 1 1 calc(50% - 7px);
+            min-width: 170px;
+            background: rgba(251, 191, 36, 0.14);
+            color: #fde68a;
+            border: 1px solid rgba(251, 191, 36, 0.42);
+            padding: 9px 12px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            text-align: left;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+        }
+        .info-trigger-btn.single {
+            flex: 1 1 100%;
+        }
+        .info-trigger-btn:hover {
+            background: rgba(251, 191, 36, 0.24);
+            border-color: rgba(251, 191, 36, 0.75);
+        }
+        .info-trigger-btn.active {
+            background: #fbbf24;
+            color: #020617;
+            border-color: #fbbf24;
+        }
+
+        .detail-popup-window {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            margin-top: 0;
+            transform: translateY(8px);
+            transition: max-height 0.36s ease, opacity 0.26s ease, margin-top 0.26s ease, transform 0.3s ease;
+        }
+        .detail-popup-window.open {
+            max-height: 260px;
+            opacity: 1;
+            margin-top: 10px;
+            transform: translateY(0);
+            overflow-y: auto;
+        }
+        .detail-popup-card {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%);
+            border: 1px solid rgba(251, 191, 36, 0.45);
+            border-left: 4px solid #fbbf24;
+            border-radius: 12px;
+            padding: 12px 14px;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+        }
+        .detail-popup-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+        }
+        .detail-popup-title {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #fbbf24;
+        }
+        .detail-close-btn {
+            flex: 0 0 auto;
+            background: rgba(148, 163, 184, 0.16);
+            color: #e2e8f0;
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .detail-close-btn:hover {
+            background: rgba(251, 191, 36, 0.25);
+            color: #fffbeb;
+        }
+        .detail-popup-body {
+            font-size: 0.9rem;
+            line-height: 1.52;
+            color: #f1f5f9;
+        }
+        .detail-popup-body p {
+            margin: 0 0 6px 0;
+        }
+        .detail-popup-body p:last-child {
+            margin-bottom: 0;
+        }
+        .detail-points {
+            margin: 6px 0 0 0;
+            padding-left: 18px;
+            font-size: 0.86rem;
+            line-height: 1.45;
+            color: #fde68a;
+        }
+        .detail-points li {
+            margin-bottom: 3px;
+        }
+
         .controls {
             display: none;
             gap: 10px;
@@ -322,7 +435,23 @@
             <span class="step-counter" id="step-counter">1 / 12</span>
         </div>
         <h2 id="slide-title">Ładowanie...</h2>
+
+        <!-- Na 1. slajdzie zostaje widoczny opis -->
         <p id="slide-desc">Przygotowywanie widoku...</p>
+
+        <!-- Od 2. slajdu: guziki i wysuwane okienko z dokładniejszym opisem -->
+        <div id="slide-interactive-desc" style="display: none;">
+            <div class="desc-buttons-wrap" id="desc-buttons-wrap"></div>
+            <div class="detail-popup-window" id="detail-popup-window">
+                <div class="detail-popup-card">
+                    <div class="detail-popup-header">
+                        <span class="detail-popup-title" id="detail-popup-title">Szczegółowy opis</span>
+                        <button type="button" class="detail-close-btn" onclick="closeDetailWindow()">✕ Zamknij</button>
+                    </div>
+                    <div class="detail-popup-body" id="detail-popup-body"></div>
+                </div>
+            </div>
+        </div>
 
         <div class="controls" id="presenter-controls">
             <button onclick="changeStep(-1)">◀ Wstecz</button>
@@ -332,39 +461,35 @@
 
     <script>
         // --- UTRZYMANIE WŁĄCZONEGO EKRANU NA TELEFONIE (SCREEN WAKE LOCK) ---
-let wakeLockSentinel = null;
+        let wakeLockSentinel = null;
 
-async function requestWakeLock() {
-    if (!('wakeLock' in navigator)) return;
-    if (document.visibilityState !== 'visible') return;
-    if (wakeLockSentinel && !wakeLockSentinel.released) return;
+        async function requestWakeLock() {
+            if (!('wakeLock' in navigator)) return;
+            if (document.visibilityState !== 'visible') return;
+            if (wakeLockSentinel && !wakeLockSentinel.released) return;
 
-    try {
-        wakeLockSentinel = await navigator.wakeLock.request('screen');
-        wakeLockSentinel.addEventListener('release', () => {
-            wakeLockSentinel = null;
-        });
-    } catch (err) {
-        // Np. słaba bateria lub tryb oszczędzania energii — ignorujemy bez błędu
-        console.debug('Wake Lock niedostępny:', err);
-    }
-}
+            try {
+                wakeLockSentinel = await navigator.wakeLock.request('screen');
+                wakeLockSentinel.addEventListener('release', () => {
+                    wakeLockSentinel = null;
+                });
+            } catch (err) {
+                console.debug('Wake Lock niedostępny:', err);
+            }
+        }
 
-// Próba włączenia od razu po załadowaniu strony
-requestWakeLock();
-
-// Ponowne włączenie po powrocie do karty na telefonie
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
         requestWakeLock();
-    }
-});
 
-// Dodatkowy bezpiecznik po pierwszym kliknięciu / dotknięciu ekranu
-window.addEventListener('pointerdown', () => {
-    requestWakeLock();
-}, { once: false });
-        
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                requestWakeLock();
+            }
+        });
+
+        window.addEventListener('pointerdown', () => {
+            requestWakeLock();
+        }, { once: false });
+
         // --- KONFIGURACJA SUPABASE ---
         const SECRET_PIN = '1234';
         const SUPABASE_URL = 'https://plzaadfybmpslfrohiek.supabase.co';
@@ -424,6 +549,7 @@ window.addEventListener('pointerdown', () => {
             {
                 tag: 'TEMAT 1/8',
                 title: 'Postawa Polaków wobec okupantów',
+                keepStaticDesc: true,
                 desc: 'Różnorodność postaw w realiach terroru: od otwartego oporu (konspiracja, tajne nauczanie, sabotaż), przez codzienne przetrwanie i bierny opór, po margines kolaboracji.',
                 loc: POLAND_LOCATIONS.polandCenter,
                 photos: []
@@ -436,7 +562,16 @@ window.addEventListener('pointerdown', () => {
                 photos: [
                     {
                         url: 'https://muzeum-ak.pl/aaopracowania/zdjecia2/250204112618wysiedlenia.jpg',
-                        caption: 'Oddział niemiecki na Zamojszczyźnie'
+                        caption: 'Oddział niemiecki na Zamojszczyźnie',
+                        btnLabel: 'Dokładniejszy opis: Wysiedlenia na Zamojszczyźnie',
+                        detailTitle: 'Zamojszczyzna — wysiedlenia i pacyfikacje (od XI 1942 r.)',
+                        detailParagraphs: [
+                            'Akcja wysiedleńcza rozpoczęta w listopadzie 1942 r. (m.in. od okolic Skierbieszowa) miała utworzyć niemiecki obszar osadniczy w ramach Generalnego Planu Wschodniego.'
+                        ],
+                        detailPoints: [
+                            'Rozdzielanie rodzin i wywózki na roboty przymusowe lub do obozów (m.in. Auschwitz, Majdanek).',
+                            'Pacyfikacje wsi i opór zbrojny oddziałów BCh oraz AK.'
+                        ]
                     }
                 ]
             },
@@ -448,7 +583,16 @@ window.addEventListener('pointerdown', () => {
                 photos: [
                     {
                         url: 'https://assets.isu.pub/document-structure/230414064805-3e24bdbd16ba83d0c4d5cd1845e1da95/v1/3682edc6e8db84edb1255eb27d0543e9.jpeg',
-                        caption: 'Selekcja więźniów'
+                        caption: 'Selekcja więźniów',
+                        btnLabel: 'Dokładniejszy opis: Zagłada polskich Żydów',
+                        detailTitle: 'Etapy eksterminacji ludności żydowskiej',
+                        detailParagraphs: [
+                            'Niemiecka polityka przeszła od izolacji w gettach i wyzysku ekonomicznego do masowego ludobójstwa.'
+                        ],
+                        detailPoints: [
+                            'Obozy zagłady: Treblinka, Sobibór, Bełżec, Chełmno oraz KL Auschwitz-Birkenau.',
+                            'Selekcja decydowała o natychmiastowej śmierci lub skierowaniu do wyniszczającej pracy.'
+                        ]
                     }
                 ]
             },
@@ -460,11 +604,29 @@ window.addEventListener('pointerdown', () => {
                 photos: [
                     {
                         url: 'https://i.gremicdn.pl/image/free/e9040b222e455cefda14e70449f8d737/?t=resize:fill:948:593,enlarge:1',
-                        caption: 'Powstańcy z ŻOB'
+                        caption: 'Powstańcy z ŻOB',
+                        btnLabel: '1. Powstańcy z ŻOB',
+                        detailTitle: 'Zryw zbrojny w getcie (19 kwietnia 1943 r.)',
+                        detailParagraphs: [
+                            'Bojownicy ŻOB oraz ŻZW podjęli walkę przeciwko oddziałom niemieckim przystępującym do ostatecznej likwidacji getta warszawskiego.'
+                        ],
+                        detailPoints: [
+                            'Wielka dysproporcja uzbrojenia i sił wobec wojsk okupanta.',
+                            'Walka o godność, opór i pamięć w sytuacji skrajnego osaczenia.'
+                        ]
                     },
                     {
                         url: 'https://bi.im-g.pl/im/ce/89/17/z24682190AMP,Zydzi-wypedzani-z-warszawskiego-getta-po-stlumieni.jpg',
-                        caption: 'Ludność żydowska'
+                        caption: 'Ludność żydowska',
+                        btnLabel: '2. Los ludności cywilnej',
+                        detailTitle: 'Tłumienie powstania i los cywilów',
+                        detailParagraphs: [
+                            'Niemcy systematycznie podpalali i burzyli zabudowę getta, wypędzając ukrywających się mieszkańców ze schronów i piwnic.'
+                        ],
+                        detailPoints: [
+                            'Masowe zatrzymania i kierowanie ocalałych do obozów zagłady.',
+                            'Całkowite zniszczenie dzielnicy żydowskiej.'
+                        ]
                     }
                 ]
             },
@@ -476,19 +638,55 @@ window.addEventListener('pointerdown', () => {
                 photos: [
                     {
                         url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTRme_zKw3YgDAIKvvXCl71V_zy0bN3FsRZ6Tw0gEwicA&s=10',
-                        caption: 'Pomnik księcia Józefa Poniatowskiego — Życie w okupowanej Warszawie (Polacy)'
+                        caption: 'Pomnik księcia Józefa Poniatowskiego — Życie w okupowanej Warszawie (Polacy)',
+                        btnLabel: '1. Polacy w Warszawie',
+                        detailTitle: 'Codzienność i konspiracja Polaków',
+                        detailParagraphs: [
+                            'Polacy zmagali się z terrorem policyjnym, łapankami i brakami żywności, tworząc jednocześnie rozbudowane podziemie.'
+                        ],
+                        detailPoints: [
+                            'Tajne nauczanie, prasa podziemna i opór cywilny.',
+                            'Życie w cieniu represji i niepewności jutra.'
+                        ]
                     },
                     {
                         url: 'https://dzieje.pl/sites/default/files/styles/open_article_750x0_/public/201612/hitler_warszawa.jpg?itok=o2KCmlZR',
-                        caption: 'Niemieckie przemarsze, a także parady wojskowe — Życie w okupowanej Warszawie (Niemcy)'
+                        caption: 'Niemieckie przemarsze, a także parady wojskowe — Życie w okupowanej Warszawie (Niemcy)',
+                        btnLabel: '2. Władze okupacyjne',
+                        detailTitle: 'Pokazowa siła i przywileje okupanta',
+                        detailParagraphs: [
+                            'Władze III Rzeszy podkreślały swoją dominację defiladami, symboliką i wydzielonymi strefami uprzywilejowania.'
+                        ],
+                        detailPoints: [
+                            'Wyraźny podział na uprzywilejowanych Niemców i ludność podbitą.',
+                            'Narzucony porządek policyjny i administracyjny.'
+                        ]
                     },
                     {
                         url: 'https://mw-prod.s3.amazonaws.com/inspirations/images/6724a845-5174-4c4e-ad1a-73f3eed669c5.jpg.605x960_q85.jpg',
-                        caption: 'Tramwaje i wagony kolejowe — Życie w okupowanej Warszawie (Niemcy)'
+                        caption: 'Tramwaje i wagony kolejowe — Życie w okupowanej Warszawie (Niemcy)',
+                        btnLabel: '3. Komunikacja i podziały',
+                        detailTitle: 'Transport miejski w okupowanym mieście',
+                        detailParagraphs: [
+                            'Komunikacja tramwajowa i kolejowa funkcjonowała w warunkach wojennych ograniczeń oraz narzucanych podziałów.'
+                        ],
+                        detailPoints: [
+                            'Wydzielanie miejsc lub wagonów dla określonych grup.',
+                            'Podstawowy środek przemieszczania się w zatłoczonym mieście.'
+                        ]
                     },
                     {
                         url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQG6eB-eptxWTrZbaVfoeCG_KvvexIK2Axlu1TeEa-0dA&s=10',
-                        caption: 'Na ulicach getta — Życie w okupowanej Warszawie (Żydzi)'
+                        caption: 'Na ulicach getta — Życie w okupowanej Warszawie (Żydzi)',
+                        btnLabel: '4. Żydzi w getcie',
+                        detailTitle: 'Izolacja i dramat mieszkańców getta',
+                        detailParagraphs: [
+                            'Zamknięcie w getcie oznaczało skrajne stłoczenie, głód, choroby i odcięcie od reszty miasta.'
+                        ],
+                        detailPoints: [
+                            'Ogromna śmiertelność z powodu głodu i tyfusu.',
+                            'Punkt wyjścia do późniejszych masowych deportacji.'
+                        ]
                     }
                 ]
             },
@@ -500,7 +698,16 @@ window.addEventListener('pointerdown', () => {
                 photos: [
                     {
                         url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTdwRTTrlDW20qled-SW-cGU9GKvUP8IDCvtRqDGBgnew&s=10',
-                        caption: 'Rodzina Ulmów — Polacy wobec Holokaustu'
+                        caption: 'Rodzina Ulmów — Polacy wobec Holokaustu',
+                        btnLabel: 'Dokładniejszy opis: Pomoc i rodzina Ulmów',
+                        detailTitle: 'Pomoc pod groźbą kary śmierci — rodzina Ulmów',
+                        detailParagraphs: [
+                            'Na ziemiach polskich za pomoc Żydom groziła kara śmierci całej rodzinie. Józef i Wiktoria Ulmowie z Markowej ukrywali Żydów i ponieśli śmierć wraz z dziećmi.'
+                        ],
+                        detailPoints: [
+                            'Działalność Rady Pomocy Żydom „Żegota” przy wsparciu Polskiego Państwa Podziemnego.',
+                            'Indywidualna odwaga i poświęcenie ratujących.'
+                        ]
                     }
                 ]
             },
@@ -512,7 +719,16 @@ window.addEventListener('pointerdown', () => {
                 photos: [
                     {
                         url: 'https://www.jhi.pl/storage/image/core_files/2020/10/26/84a958331ade091333b237f472fd96a2/jpg/jhi/normal_big/wide_Irena_Sendlerowa_1942_3.jpg',
-                        caption: 'Irena Sendlerowa'
+                        caption: 'Irena Sendlerowa',
+                        btnLabel: 'Dokładniejszy opis: Irena Sendlerowa',
+                        detailTitle: 'Ratowanie dzieci z warszawskiego getta',
+                        detailParagraphs: [
+                            'Jako kierowniczka referatu dziecięcego „Żegoty” organizowała wyprowadzanie dzieci z getta i ich ukrycie.'
+                        ],
+                        detailPoints: [
+                            'Ponad 2500 uratowanych dzieci dzięki sieci współpracowników.',
+                            'Fałszywe metryki i umieszczanie dzieci w bezpiecznych placówkach oraz domach.'
+                        ]
                     }
                 ]
             },
@@ -524,35 +740,80 @@ window.addEventListener('pointerdown', () => {
                 photos: [
                     {
                         url: 'https://upload.wikimedia.org/wikipedia/commons/c/cd/Lipniki_massacre.jpg?utm_source=pl.wikipedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled',
-                        caption: 'Ciała Polaków we wsi Lipniki — Rzeź wołyńska'
+                        caption: 'Ciała Polaków we wsi Lipniki — Rzeź wołyńska',
+                        btnLabel: 'Dokładniejszy opis: Rzeź wołyńska (Lipniki, 1943)',
+                        detailTitle: 'Czystka etniczna na Wołyniu w 1943 r.',
+                        detailParagraphs: [
+                            'Zbrodnia dokonana przez OUN-B i UPA na polskiej ludności cywilnej na Wołyniu, ze szczególnym nasileniem latem 1943 r.'
+                        ],
+                        detailPoints: [
+                            'Napady na wsie, podpalenia i masowe mordy ludności cywilnej.',
+                            'Tragiczne wydarzenie na pograniczu polsko-ukraińskim wymagające rzetelnej pamięci.'
+                        ]
                     }
                 ]
             },
             {
                 tag: 'PODSUMOWANIE 1/4',
                 title: 'Podsumowanie: Terror niemieckich władz okupacyjnych',
+                btnLabel: 'Rozwiń dokładniejszy opis podsumowania',
+                detailTitle: 'Kluczowe wnioski — terror okupanta',
                 desc: 'Systematyczna przemoc, łapanki, egzekucje, obozy oraz wysiedlenia (np. na Zamojszczyźnie) miały złamać opór społeczeństwa i podporządkować ziemie polskie celom III Rzeszy.',
+                detailParagraphs: [
+                    'Systematyczna przemoc, łapanki, egzekucje, obozy oraz wysiedlenia (np. na Zamojszczyźnie) miały złamać opór społeczeństwa i podporządkować ziemie polskie celom III Rzeszy.'
+                ],
+                detailPoints: [
+                    'Bezprecedensowe okrucieństwo i łamanie prawa wojennego.',
+                    'Próba złamania ducha oporu i podporządkowania gospodarki oraz ludności.'
+                ],
                 loc: POLAND_LOCATIONS.polandCenter,
                 photos: []
             },
             {
                 tag: 'PODSUMOWANIE 2/4',
                 title: 'Podsumowanie: Żydzi byli poddawani represjom',
+                btnLabel: 'Rozwiń dokładniejszy opis podsumowania',
+                detailTitle: 'Kluczowe wnioski — los ludności żydowskiej',
                 desc: 'Od dyskryminacji i zamknięcia w gettach po masową zagładę — ludność żydowska stała się głównym celem polityki eksterminacyjnej okupanta.',
+                detailParagraphs: [
+                    'Od dyskryminacji i zamknięcia w gettach po masową zagładę — ludność żydowska stała się głównym celem polityki eksterminacyjnej okupanta.'
+                ],
+                detailPoints: [
+                    'Izolacja w gettach i wyzysk poprzedziły masową eksterminację.',
+                    'Powstanie w getcie warszawskim jako symbol oporu wobec zagłady.'
+                ],
                 loc: POLAND_LOCATIONS.warsaw,
                 photos: []
             },
             {
                 tag: 'PODSUMOWANIE 3/4',
                 title: 'Podsumowanie: Część Polaków pomagała Żydom',
+                btnLabel: 'Rozwiń dokładniejszy opis podsumowania',
+                detailTitle: 'Kluczowe wnioski — pomoc i postawy ratujących',
                 desc: 'Pomimo skrajnego ryzyka (kary śmierci za pomoc) wielu Polaków i struktur podziemnych (np. „Żegota”, Irena Sendlerowa, rodzina Ulmów) niosło realne wsparcie.',
+                detailParagraphs: [
+                    'Pomimo skrajnego ryzyka (kary śmierci za pomoc) wielu Polaków i struktur podziemnych (np. „Żegota”, Irena Sendlerowa, rodzina Ulmów) niosło realne wsparcie.'
+                ],
+                detailPoints: [
+                    'Szczególnie surowe represje grożące za pomoc na ziemiach polskich.',
+                    'Zinstytucjonalizowane wsparcie („Żegota”) oraz indywidualne poświęcenie.'
+                ],
                 loc: POLAND_LOCATIONS.markowa,
                 photos: []
             },
             {
                 tag: 'PODSUMOWANIE 4/4',
                 title: 'Podsumowanie: Rzeź wołyńska',
+                btnLabel: 'Rozwiń dokładniejszy opis podsumowania',
+                detailTitle: 'Kluczowe wnioski — rzeź wołyńska',
                 desc: 'Tragiczny rozdział dziejów pogranicza polsko-ukraińskiego podczas II wojny światowej — masowa zbrodnia na polskiej ludności cywilnej wymagająca pamięci i rzetelnej wiedzy historycznej.',
+                detailParagraphs: [
+                    'Tragiczny rozdział dziejów pogranicza polsko-ukraińskiego podczas II wojny światowej — masowa zbrodnia na polskiej ludności cywilnej wymagająca pamięci i rzetelnej wiedzy historycznej.'
+                ],
+                detailPoints: [
+                    'Masowa czystka etniczna na ludności polskiej w 1943 r.',
+                    'Ważny element pamięci historycznej i edukacji.'
+                ],
                 loc: POLAND_LOCATIONS.wolyn,
                 photos: []
             }
@@ -561,6 +822,7 @@ window.addEventListener('pointerdown', () => {
         let countriesData = [];
         let currentStep = 0;
         let currentPhotoIndex = 0;
+        let activeDetailKey = null; // np. 'photo-0', 'photo-1', 'slide'
         const maxSteps = SLIDES.length - 1;
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -602,7 +864,116 @@ window.addEventListener('pointerdown', () => {
                 .polygonAltitude(0.02);
         }
 
-        function applyPhoto(slide, photoIdx) {
+        function closeDetailWindow() {
+            activeDetailKey = null;
+            const slide = SLIDES[currentStep] || SLIDES[0];
+            renderSlideDescription(slide);
+        }
+
+        function buildFormattedDetailHtml(sourceObj, fallbackText) {
+            let html = '';
+            if (Array.isArray(sourceObj.detailParagraphs) && sourceObj.detailParagraphs.length > 0) {
+                html += sourceObj.detailParagraphs.map(t => `<p>${t}</p>`).join('');
+            } else {
+                html += `<p>${sourceObj.details || fallbackText || ''}</p>`;
+            }
+
+            if (Array.isArray(sourceObj.detailPoints) && sourceObj.detailPoints.length > 0) {
+                html += `<ul class="detail-points">${sourceObj.detailPoints.map(pt => `<li>${pt}</li>`).join('')}</ul>`;
+            }
+            return html;
+        }
+
+        function renderSlideDescription(slide) {
+            const staticDescEl = document.getElementById('slide-desc');
+            const interactiveWrap = document.getElementById('slide-interactive-desc');
+            const buttonsWrap = document.getElementById('desc-buttons-wrap');
+            const popupWindow = document.getElementById('detail-popup-window');
+            const popupTitle = document.getElementById('detail-popup-title');
+            const popupBody = document.getElementById('detail-popup-body');
+
+            // Pierwszy slajd: zostaje zwykły opis
+            if (slide.keepStaticDesc) {
+                staticDescEl.style.display = 'block';
+                staticDescEl.innerText = slide.desc;
+                interactiveWrap.style.display = 'none';
+                popupWindow.classList.remove('open');
+                return;
+            }
+
+            // Pozostałe slajdy: zamiast zwykłego opisu pokazujemy guziki i wysuwane okienko
+            staticDescEl.style.display = 'none';
+            interactiveWrap.style.display = 'block';
+            buttonsWrap.innerHTML = '';
+
+            const hasPhotos = Array.isArray(slide.photos) && slide.photos.length > 0;
+
+            if (hasPhotos) {
+                const isSinglePhoto = slide.photos.length === 1;
+
+                slide.photos.forEach((photo, idx) => {
+                    const key = `photo-${idx}`;
+                    const isActive = activeDetailKey === key;
+
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'info-trigger-btn' + (isSinglePhoto ? ' single' : '') + (isActive ? ' active' : '');
+
+                    const labelText = photo.btnLabel || (isSinglePhoto ? 'Dokładniejszy opis' : `Zdjęcie ${idx + 1}: ${photo.caption}`);
+                    const indicator = isActive ? '▲' : '▼';
+                    btn.innerHTML = `<span>${labelText}</span><span>${indicator}</span>`;
+
+                    btn.onclick = () => {
+                        if (activeDetailKey === key) {
+                            activeDetailKey = null;
+                        } else {
+                            activeDetailKey = key;
+                            if (!isSinglePhoto && idx !== currentPhotoIndex) {
+                                applyPhoto(slide, idx, false);
+                            }
+                        }
+                        renderSlideDescription(slide);
+                    };
+
+                    buttonsWrap.appendChild(btn);
+                });
+            } else {
+                const key = 'slide-summary';
+                const isActive = activeDetailKey === key;
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'info-trigger-btn single' + (isActive ? ' active' : '');
+                const labelText = slide.btnLabel || 'Rozwiń dokładniejszy opis';
+                const indicator = isActive ? '▲' : '▼';
+                btn.innerHTML = `<span>${labelText}</span><span>${indicator}</span>`;
+
+                btn.onclick = () => {
+                    activeDetailKey = isActive ? null : key;
+                    renderSlideDescription(slide);
+                };
+
+                buttonsWrap.appendChild(btn);
+            }
+
+            // Wypełnienie i otwarcie/zamknięcie wysuwanego okienka
+            if (activeDetailKey) {
+                if (activeDetailKey.startsWith('photo-') && hasPhotos) {
+                    const idx = parseInt(activeDetailKey.replace('photo-', ''), 10);
+                    const photo = slide.photos[idx] || slide.photos[currentPhotoIndex] || slide.photos[0];
+                    popupTitle.innerText = photo.detailTitle || photo.caption || slide.title;
+                    popupBody.innerHTML = buildFormattedDetailHtml(photo, slide.desc);
+                } else {
+                    popupTitle.innerText = slide.detailTitle || slide.title;
+                    popupBody.innerHTML = buildFormattedDetailHtml(slide, slide.desc);
+                }
+                popupWindow.classList.add('open');
+            } else {
+                popupWindow.classList.remove('open');
+            }
+        }
+
+        function applyPhoto(slide, photoIdx, syncDetailToPhoto = true) {
             const backdrop = document.getElementById('scene-backdrop');
             const photoBar = document.getElementById('photo-bar');
             const captionEl = document.getElementById('photo-caption-text');
@@ -623,6 +994,11 @@ window.addEventListener('pointerdown', () => {
             const safeIdx = ((photoIdx % slide.photos.length) + slide.photos.length) % slide.photos.length;
             currentPhotoIndex = safeIdx;
             const photo = slide.photos[safeIdx];
+
+            if (syncDetailToPhoto && activeDetailKey && activeDetailKey.startsWith('photo-')) {
+                activeDetailKey = `photo-${safeIdx}`;
+            }
+            renderSlideDescription(slide);
 
             backdrop.classList.add('active');
             captionEl.innerText = slide.photos.length > 1
@@ -661,7 +1037,7 @@ window.addEventListener('pointerdown', () => {
         function cyclePhoto(delta) {
             const slide = SLIDES[currentStep];
             if (!slide || !slide.photos || slide.photos.length <= 1) return;
-            applyPhoto(slide, currentPhotoIndex + delta);
+            applyPhoto(slide, currentPhotoIndex + delta, true);
         }
 
         function renderScene(step) {
@@ -673,12 +1049,13 @@ window.addEventListener('pointerdown', () => {
 
             const slide = SLIDES[step] || SLIDES[0];
             currentPhotoIndex = 0;
+            activeDetailKey = null;
 
             document.getElementById('section-badge').innerText = slide.tag;
             document.getElementById('step-counter').innerText = `${step + 1} / ${SLIDES.length}`;
             document.getElementById('slide-title').innerText = slide.title;
-            document.getElementById('slide-desc').innerText = slide.desc;
 
+            renderSlideDescription(slide);
             highlightPoland();
 
             world.htmlElementsData([{
@@ -702,7 +1079,7 @@ window.addEventListener('pointerdown', () => {
 
             if (slide.photos && slide.photos.length > 0) {
                 setTimeout(() => {
-                    applyPhoto(slide, 0);
+                    applyPhoto(slide, 0, false);
                 }, 650);
             }
         }
